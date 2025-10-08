@@ -49,13 +49,6 @@ try:
 except ImportError:
     LXML_AVAILABLE = False
 
-try:
-    import pypff
-    PYPFF_AVAILABLE = True
-except ImportError:
-    PYPFF_AVAILABLE = False
-
-
 def seleccionar_archivo_pst():
     """
     Abrir un diálogo para seleccionar el archivo PST.
@@ -571,23 +564,82 @@ correos del archivo PST seleccionado.
         
         # Determinar directorio de salida
         output_dir = args.output_dir
+
+        # Si no se especificó, preguntar al usuario mediante diálogo de carpeta
         if not output_dir:
-            pst_path = Path(pst_file)
-            output_dir = pst_path.parent / f"{pst_path.stem}_xml_extraidos"
-            print(f"📁 Directorio de salida automático: {output_dir}")
+            try:
+                # Intentar abrir un diálogo de selección de carpeta (GUI)
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes('-topmost', True)
+
+                # Directorio sugerido por defecto: misma carpeta del PST
+                pst_path = Path(pst_file)
+                suggested = str(pst_path.parent / f"{pst_path.stem}_xml_extraidos")
+
+                selected_dir = filedialog.askdirectory(
+                    title="Seleccionar directorio de salida (o cancelar para usar el sugerido)",
+                    initialdir=os.path.expanduser("~"),
+                    mustexist=False
+                )
+
+                root.destroy()
+
+                if selected_dir:
+                    output_dir = selected_dir
+                    print(f"📁 Directorio de salida seleccionado: {output_dir}")
+                else:
+                    output_dir = suggested
+                    print(f"📁 Usando directorio de salida sugerido: {output_dir}")
+
+            except Exception as e:
+                # En caso de error con la GUI, usar el sugerido
+                pst_path = Path(pst_file)
+                output_dir = pst_path.parent / f"{pst_path.stem}_xml_extraidos"
+                print(f"⚠️ No se pudo abrir diálogo de carpeta, usando: {output_dir} ({e})")
         
         # Confirmar con el usuario
-        confirmacion = messagebox.askyesno(
-            "Confirmar Extracción",
+        # Mostrar confirmación y permitir cambiar la carpeta antes de proceder
+        confirm_text = (
             f"🔍 CONFIRMAR EXTRACCIÓN\n\n"
             f"📂 Archivo PST:\n{pst_file}\n\n"
             f"📁 Directorio de salida:\n{output_dir}\n\n"
-            f"¿Proceder con la extracción?"
+            f"¿Proceder con la extracción?\n\nSi desea cambiar el directorio de salida, pulse 'No' y seleccione uno nuevo."
         )
+
+        confirmacion = messagebox.askyesno("Confirmar Extracción", confirm_text)
         
         if not confirmacion:
-            print("⏹️ Operación cancelada por el usuario")
-            sys.exit(0)
+            # Si el usuario no confirma, permitir seleccionar carpeta nueva o cancelar
+            try:
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes('-topmost', True)
+                nuevo_dir = filedialog.askdirectory(
+                    title="Seleccionar nuevo directorio de salida (o cancelar para detener)",
+                    initialdir=str(output_dir),
+                    mustexist=False
+                )
+                root.destroy()
+
+                if not nuevo_dir:
+                    print("⏹️ Operación cancelada por el usuario")
+                    sys.exit(0)
+                else:
+                    output_dir = nuevo_dir
+                    print(f"📁 Nuevo directorio de salida seleccionado: {output_dir}")
+                    # volver a pedir confirmación
+                    confirmacion2 = messagebox.askyesno(
+                        "Confirmar Extracción",
+                        f"Proceder con la extracción en:\n{output_dir}?"
+                    )
+                    if not confirmacion2:
+                        print("⏹️ Operación cancelada por el usuario")
+                        sys.exit(0)
+
+            except Exception as e:
+                print(f"⚠️ Error al permitir cambiar directorio: {e}")
+                sys.exit(1)
         
         # Crear y ejecutar extractor
         extractor = ExtractorXMLPSTGUI(pst_file, output_dir)
