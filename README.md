@@ -1,21 +1,3 @@
-# 🧾 PST XML Extractor
-
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Windows](https://img.shields.io/badge/platform-windows-lightgrey.svg)](https://www.microsoft.com/windows)
-
-Herramienta Python con **interfaz gráfica** para extraer archivos XML de facturación electrónica con nomenclatura `FE#####.xml` desde correos almacenados en archivos PST de Microsoft Outlook y archivos EML.
-
-## ✨ Características Principales
-
-- 🎯 **Interfaz Gráfica Intuitiva** - Selección fácil de archivos PST con diálogos visuales
-- 📊 **Progreso Visual** - Barra de progreso en tiempo real durante el procesamiento
-- 🔍 **Detección Inteligente** - Encuentra automáticamente archivos FE*.xml en adjuntos
-- 📧 **Soporte Múltiple** - Compatible con archivos PST y EML
-- 📋 **Logs Detallados** - Registro completo con remitentes, fechas y metadatos
-- ✅ **Validación XML** - Verifica que los archivos extraídos sean válidos
-- 🛡️ **Robusto** - Maneja archivos PST grandes y errores graciosamente
-
 ## 🎮 Uso Rápido
 
 ### Método Más Fácil (GUI)
@@ -121,7 +103,7 @@ Archivos encontrados:
 No, requiere Microsoft Outlook para acceder a archivos PST de manera confiable.
 
 **¿Qué tipos de XML encuentra?**
-Busca archivos con patrón `FE*.xml` típicos de facturación electrónica.
+Busca y extrae cualquier archivo con extensión `.xml` adjunto en los correos del PST, sin importar el nombre.
 
 **¿Es seguro?**
 Sí, solo lee los archivos PST localmente, no envía datos a ningún servidor.

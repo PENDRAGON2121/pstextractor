@@ -122,7 +122,7 @@ class VentanaProgreso:
         self.etiqueta_estado.pack(pady=5)
         
         # Barra de progreso
-        self.barra_progreso = ttk.Progressbar(self.ventana, length=500, mode='determinate')
+        self.barra_progreso = ttk.Progressbar(self.ventana, length=500, mode='indeterminate')
         self.barra_progreso.pack(pady=10)
         
         # Porcentaje
@@ -151,9 +151,16 @@ class VentanaProgreso:
         try:
             # Actualizar barra de progreso
             if total > 0:
+                if self.barra_progreso['mode'] != 'determinate':
+                    self.barra_progreso.config(mode='determinate', maximum=100)
                 porcentaje = (progreso / total) * 100
                 self.barra_progreso['value'] = porcentaje
                 self.etiqueta_porcentaje.config(text=f"{porcentaje:.1f}%")
+            else:
+                if self.barra_progreso['mode'] != 'indeterminate':
+                    self.barra_progreso.config(mode='indeterminate')
+                self.barra_progreso.start(10)
+                self.etiqueta_porcentaje.config(text="Procesando...")
             
             # Actualizar estado
             if estado:
@@ -223,8 +230,8 @@ class ExtractorXMLPSTGUI:
         self.output_dir = Path(output_dir)
         self.log_file = self.output_dir / "remitentes_pst.csv"
         
-        # Patrón regex para archivos XML de facturación
-        self.xml_pattern = re.compile(r"^FE[-_]?\d{3,}\.xml$", re.IGNORECASE)
+        # Patrón regex para aceptar cualquier archivo con extensión .xml (independientemente del nombre)
+        self.xml_pattern = re.compile(r".+\.xml$", re.IGNORECASE)
         
         # Contadores
         self.total_emails = 0
@@ -234,6 +241,31 @@ class ExtractorXMLPSTGUI:
         
         # GUI
         self.ventana_progreso = None
+
+    def sanitize_path_component(self, name: str) -> str:
+        """Sanear un nombre de carpeta para el sistema de archivos de Windows."""
+        if not name:
+            return "carpeta"
+        invalid = '<>:"/\\|?*'
+        sanitized = ''.join('_' if ch in invalid else ch for ch in str(name))
+        sanitized = sanitized.strip().strip('.')
+        return sanitized or "carpeta"
+
+    def get_output_subdir_for_ruta(self, ruta_actual: str) -> Path:
+        """Obtener el subdirectorio de salida basado solo en el nombre de la carpeta actual.
+        
+        Usa únicamente el último segmento de la ruta (nombre de carpeta directa)
+        para simplificar la organización y facilitar limpieza posterior.
+        """
+        parts = [p for p in str(ruta_actual).split('/') if p]
+        # Usar solo el último segmento (carpeta actual)
+        if parts:
+            folder_name = self.sanitize_path_component(parts[-1])
+        else:
+            folder_name = "sin_carpeta"
+        
+        subdir = self.output_dir / "xml_facturacion" / folder_name
+        return subdir
     
     def setup_directories(self):
         """Crear directorios necesarios."""
@@ -312,7 +344,7 @@ class ExtractorXMLPSTGUI:
         if self.ventana_progreso:
             self.ventana_progreso.actualizar(
                 self.processed_emails, 
-                max(self.total_emails, 1000),  # Estimación si no sabemos el total
+                0 if self.total_emails == 0 else self.total_emails,  # Usa indeterminado si no sabemos el total
                 f"Procesando: {nombre_carpeta}",
                 self.processed_emails,
                 self.extracted_xml_files
@@ -331,16 +363,22 @@ class ExtractorXMLPSTGUI:
                         for attachment in item.Attachments:
                             filename = attachment.FileName
                             
-                            if self.xml_pattern.match(filename):
-                                # Extraer adjunto XML
-                                xml_path = self.output_dir / "xml_facturacion" / filename
+                            if filename and self.xml_pattern.match(filename):
+                                # Determinar directorio de salida correspondiente a la carpeta de Outlook
+                                xml_dir = self.get_output_subdir_for_ruta(ruta_actual)
+                                xml_dir.mkdir(parents=True, exist_ok=True)
+                                # Extraer adjunto XML a ese directorio
+                                xml_path = xml_dir / filename
                                 
                                 # Si ya existe, agregar sufijo
                                 counter = 1
                                 while xml_path.exists():
                                     name_parts = filename.rsplit('.', 1)
-                                    new_name = f"{name_parts[0]}_{counter:03d}.{name_parts[1]}"
-                                    xml_path = self.output_dir / "xml_facturacion" / new_name
+                                    if len(name_parts) == 2:
+                                        new_name = f"{name_parts[0]}_{counter:03d}.{name_parts[1]}"
+                                    else:
+                                        new_name = f"{filename}_{counter:03d}"
+                                    xml_path = xml_dir / new_name
                                     counter += 1
                                 
                                 # Guardar adjunto
@@ -357,7 +395,7 @@ class ExtractorXMLPSTGUI:
                                     xml_path.stat().st_size if xml_path.exists() else 0
                                 )
                                 
-                                print(f"✅ XML extraído: {filename}")
+                                print(f"✅ XML extraído: {xml_path}")
                     
                     # Actualizar progreso cada 50 emails
                     if self.processed_emails % 50 == 0 and self.ventana_progreso:
@@ -503,7 +541,7 @@ class ExtractorXMLPSTGUI:
 def main():
     """Función principal del script."""
     parser = argparse.ArgumentParser(
-        description="Extractor de archivos XML de facturación desde PST con GUI",
+    description="Extractor de archivos XML (.xml, cualquier nombre) desde PST con GUI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Ejemplos de uso:
@@ -518,8 +556,8 @@ Características:
   📋 Logs detallados y reportes
   ✅ Notificaciones visuales de éxito/error
 
-El script buscará archivos XML con nomenclatura FE*.xml dentro de los
-correos del archivo PST seleccionado.
+El script buscará y extraerá todos los archivos con extensión .xml dentro de los
+correos del archivo PST seleccionado, sin importar el nombre del archivo.
         """
     )
     
@@ -539,7 +577,7 @@ correos del archivo PST seleccionado.
         # Mostrar información inicial
         print("🧾 EXTRACTOR XML PST CON GUI")
         print("=" * 40)
-        print("Busca archivos XML de facturación (FE*.xml) en archivos PST")
+        print("Busca y extrae archivos con extensión .xml en archivos PST (cualquier nombre)")
         print()
         
         # Verificar dependencias críticas

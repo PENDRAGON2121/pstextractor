@@ -1,6 +1,6 @@
-# � Extractores de XML de Facturación
+# � Extractores de XML
 
-Scripts Python para extraer archivos XML de facturación con nomenclatura `FE#####.xml` desde correos electrónicos EML y archivos PST de Outlook.
+Scripts Python para extraer archivos XML adjuntos (cualquier nombre con extensión `.xml`) desde correos electrónicos EML y archivos PST de Outlook.
 
 ## 📁 Archivos Principales
 
@@ -40,8 +40,6 @@ python src/extractor_xml_pst_gui.py
 # Especificar archivo PST
 python src/extractor_xml_pst_gui.py -i "archivo.pst"
 
-# Control completo
-python src/extractor_xml_pst_gui.py -i "archivo.pst" -o "salida"
 ```
 
 **Características:**
@@ -88,9 +86,9 @@ Después de la ejecución, encontrarás:
 
 ```
 xml_extracts/
-├── FE000123.xml           # Archivos XML extraídos
+├── factura1.xml           # Archivos XML extraídos (cualquier nombre)
 ├── FE-000124.xml
-├── FE_000125.xml
+├── otro_documento.XML
 ├── remitentes_eml.csv     # Log de archivos EML (si aplica)
 ├── remitentes_pst.csv     # Log de archivos PST (si aplica)
 └── remitentes_todos.csv   # Log unificado
@@ -107,7 +105,7 @@ FE000124.xml,proveedor2@empresa.com,Factura 124,2025-10-07 11:00:00,2025-10-07 1
 ## 🎯 Características
 
 ### ✅ **Funcionalidades Principales**
-- ✅ Extrae solo archivos XML con patrón `FE#####.xml`, `FE-#####.xml`, `FE_#####.xml`
+- ✅ Extrae todos los archivos con extensión `.xml` (independientemente del nombre)
 - ✅ Procesamiento con barras de progreso (tqdm)
 - ✅ Validación automática de archivos XML extraídos
 - ✅ Log detallado de remitentes y fechas
